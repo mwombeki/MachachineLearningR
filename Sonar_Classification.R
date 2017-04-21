@@ -1,5 +1,3 @@
-#library("mlbench")
-
 needs(
         caret, 
         mlbench, 
