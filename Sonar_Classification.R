@@ -1,6 +1,14 @@
 #library("mlbench")
 
-needs(caret, mlbench, caTools, ranger, glmnet, Matrix, foreach)
+needs(
+        caret, 
+        mlbench, 
+        caTools, 
+        ranger, 
+        glmnet, 
+        Matrix, 
+        foreach
+        )
 data("Sonar")
 
 rows <- sample(nrow(Sonar))
@@ -17,7 +25,10 @@ train <- Sonar[1:split,]
 test <- Sonar[(split+1):nrow(Sonar), ]
 
 #create a model 
-model <- glm(Class ~.,  train, family = "binomial")
+model <- glm(
+        Class ~.,  train, 
+        family = "binomial"
+        )
 
 # Predict on test set: p
 p <- predict(model, test, type = "response")
