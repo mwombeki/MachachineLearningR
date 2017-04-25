@@ -84,6 +84,3 @@ densityplot(resamp, metric = "ROC")
 
 #do a scatter plot to compare all folds of cross-validations
 xyplot(resamp, metric = "ROC")
-
-
-stack <-caretStack(model_list, method = "glm") 
