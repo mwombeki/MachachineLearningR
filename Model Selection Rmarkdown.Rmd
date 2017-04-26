@@ -2,10 +2,14 @@
 title: "Machine Learning Model Selection"
 author: "Mwombeki Fabian"
 date: "4/25/2017"
-output: 
+output:
         html_document:
+                number_sections: true
                 toc: true
-                theme: cerulean
+                fig_width: 7
+                fig_height: 4.5
+                theme:readable
+                highlight: tango
 ---
 
 ### Load needed libraries
