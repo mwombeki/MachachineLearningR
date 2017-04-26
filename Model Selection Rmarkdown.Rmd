@@ -1,0 +1,191 @@
+---
+title: "Machine Learning Model Selection"
+author: "Mwombeki Fabian"
+date: "4/25/2017"
+output: 
+        html_document:
+                toc: true
+                theme: cerulean
+---
+
+### Load needed libraries
+
+```{r Load_needed_libraries, message=FALSE, warning=FALSE}
+library(C50)
+library(caret)
+library(caretEnsemble)
+library(lattice)
+library(e1071)
+library(ggplot2)
+library(glmnet)
+library(Matrix)
+library(foreach)
+library(ranger)
+```
+__Load the dataset to be used__
+
+```{r data_set, echo=TRUE}
+data(churn)
+```
+
+__Explore data contents__ 
+
+__e.g.__ number of churn clients in training set
+
+```{r table_data, echo=TRUE}
+table(churnTrain$churn)/nrow(churnTrain)
+```
+
+## Create train/test indexes
+
+```{r echo = TRUE}
+set.seed(42)
+folds <- createFolds(churnTrain$churn, k=5)
+```
+
+### Compare distribution 
+
+```{r echo = TRUE}
+i <- folds$Fold1
+table(churnTrain$churn[i])/length(i)
+```
+
+### Create a traincontrol to re-use same cross validation folds
+
+```{r echo = TRUE}
+myControl <- trainControl(
+        summaryFunction = twoClassSummary,
+        classProbs = TRUE,
+        verboseIter = FALSE,
+        savePredictions = TRUE,
+        index = folds
+)
+```
+
+## First, try glmnet-linear model with variable selection
+
+__Why__
+
+1. Fits quickly (fast, simple)
+
+2. Ignores nosiy variables
+
+3. Provides interpretable coeffients the same way as the coefficients from an lm or glm model
+
+```{r echo = TRUE, message=FALSE, warning=FALSE, }
+set.seed(42)
+model_glmnet <- train(
+        churn ~., churnTrain,
+        metric = "ROC",
+        method = "glmnet",
+        tuneGrid = expand.grid(
+                alpha = 0:1,
+                lambda = 0:10/10
+        ),
+        trControl = myControl
+)
+model_glmnet$finalModel$tuneValue
+```
+
+### Plot the model
+
+```{r echo = TRUE}
+plot(model_glmnet)
+```
+
+### Plot the final model to see how the coefficient improves
+
+```{r echo = TRUE}
+plot(model_glmnet$finalModel)
+```
+
+## Second, try random forest models
+__Why__ 
+
+1. Slower to fit tahn glmnet 
+
+2. Less interpretable 
+
+3. Often but (not always) more acurate 
+
+4. Easy to tune require little pre-processing (no need to log transform or normalize) 
+
+5. Capture thresholds and variable interations 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+churnTrain$churn <- factor(churnTrain$churn, levels = c("yes","no"))
+model_rf <- train(
+        churn~., churnTrain,
+        metric = "ROC",
+        method = "ranger",
+        trControl = myControl
+)
+model_rf$finalModel
+```
+
+### Plot the model
+
+```{r plot_random_forrest_model}
+plot(model_rf)
+```
+
+## Select Final Best Model
+
+Since the same test and CrossValidation was used so possible to compare
+
+__Look for these items__
+
+* A best fitting model
+
+* A model with HIGHEST AUC and smaller range between min and max AUC
+
+* A model with lower std in AUC 
+
+### 1. Create a list of all models sampled
+```{r echo = TRUE}
+model_list <- list (
+        'Gen Linear Model' = model_glmnet, 
+        'Random Forest' = model_rf
+        )
+```
+### 2. Select the model using use resamples()
+
+```{r echo = TRUE}
+resamp <- resamples(model_list)
+resamp
+```
+
+## Create graphical comparison for easy selection
+
+###  1. Box-and-whisker plot 
+
+```{r echo = TRUE}
+bwplot(resamp,
+       metric = "ROC"
+       ) #pick higher AUC
+```
+
+### 2. Dot-plot 
+
+```{r echo TRUE}
+dotplot(resamp, #pick higher AUC
+        metric = "ROC"
+        ) # bettter for lots of models
+```
+
+###  3. Density plot 
+
+A kernel plot will show outliers with high and low AUC
+```{r echo = TRUE}
+densityplot(resamp,# shows AUC distribution
+            metric = "ROC"
+            )
+```
+
+###  4. Scatter plot 
+
+```{r echo = TRUE}
+xyplot(resamp, # compare all folds of cross-validations
+       metric = "ROC"
+       )
+```
